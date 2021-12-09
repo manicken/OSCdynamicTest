@@ -6,6 +6,7 @@
 
 
 #include <OSCMessage.h>
+#include <OSCBundle.h>
 #include <SLIPEncodedSerial.h>
 
 
@@ -19,13 +20,15 @@
 
 // GUItool: begin automatically generated code
 //AudioSynthWaveform       waveform1;      //xy=654,472
-OSCAudioSynthWaveform   waveform1("waveform1");
-OSCAudioMixer4          mixer1("mixer1");
-AudioOutputI2S           i2s1;           //xy=977,476
-AudioConnection          patchCord1(waveform1, 0, i2s1, 0);
-AudioConnection          patchCord2(waveform1, 0, mixer1, 1);
-AudioConnection          patchCord3(mixer1, 0, i2s1, 1);
-OSCAudioControlSGTL5000     sgtl5000_1("sgtl5000");     //xy=977,519
+OSCAudioSynthWaveform    waveform1("waveform1");
+OSCAudioMixer4           mixer1("mixer1");
+AudioOutputUSB           usb;           //xy=977,476
+OSCAudioOutputPT8211_2   pt8211("pt82");
+AudioConnection          patchCord1(waveform1, 0, usb, 0);
+AudioConnection          patchCord2(waveform1, 0, mixer1, 0);
+AudioConnection          patchCord3(mixer1, 0, pt8211, 0);
+AudioConnection          patchCord4(mixer1, 0, pt8211, 1);
+//OSCAudioControlSGTL5000     sgtl5000_1("sgtl5000");     //xy=977,519
 // GUItool: end automatically generated code
 
 
@@ -55,8 +58,8 @@ void setup() {
 
   //-------------------------------
   AudioMemory(10);
-  sgtl5000_1.enable();
-  sgtl5000_1.volume(0.1);
+  //sgtl5000_1.enable();
+  //sgtl5000_1.volume(0.1);
   //-------------------------------
 }
 
@@ -94,8 +97,9 @@ void listObjects(void)
 // work with SLIP-protocol serial port:
 void loop()
 {
-  OSCMessage msg;
+  OSCBundle  msg;
   int msgLen;
+  int msgCount;
   char prt[200];
   
   while (!HWSERIAL.endofPacket())
@@ -112,12 +116,22 @@ void loop()
 
   if (!msg.hasError())
   {
-    msg.getAddress(prt);
+    msgCount = msg.size();
+    for (int i = 0; i < msgCount; i++) {
+      msg.getOSCMessage(i)->getAddress(prt);
+      Serial.println(prt);
+      Serial.flush();
+      msg.getOSCMessage(i)->route("/teensy*/audio*",routeAudio); // see if this object can use the message
+      msg.getOSCMessage(i)->route("/teensy*/dynamic*",routeDynamic); // see if this object can use the message
+      //msg.getAddress(prt);
+      
+    }
     
-    Serial.println(prt);
-    Serial.flush();
-    msg.route("/teensy*/audio",routeAudio); // see if this object can use the message
-    msg.route("/teensy*/dynamic",routeDynamic); // see if this object can use the message
+    
+    
+    
+    //msg.route("/teensy*/audio*",routeAudio); // see if this object can use the message
+    //msg.route("/teensy*/dynamic*",routeDynamic); // see if this object can use the message
     Serial.println("---------------------");
     listObjects();
     Serial.println("=====================");
