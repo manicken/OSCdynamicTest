@@ -20,9 +20,13 @@ static void dbgPrt(OSCMessage& msg, int addressOffset)
  */
 void OSCAudioBase::routeDynamic(OSCMessage& msg, int addressOffset)
 {
-    if (isStaticTarget(msg,addressOffset,"/cr*O*","ss")) {createObject(msg,addressOffset);} 
+    
+    if (isStaticTarget(msg,addressOffset,"/ren*","ss")) {renameObject(msg,addressOffset);} 
+    #if defined(SAFE_RELEASE) // only defined in Dynamic Audio Objects library
+    else if (isStaticTarget(msg,addressOffset,"/cr*O*","ss")) {createObject(msg,addressOffset);}
     else if (isStaticTarget(msg,addressOffset,"/cr*C","s")) {createConnection(msg,addressOffset);} 
-    else if (isStaticTarget(msg,addressOffset,"/d*","s")) {destroyObject(msg,addressOffset);} 
+    else if (isStaticTarget(msg,addressOffset,"/d*","s")) {destroyObject(msg,addressOffset);}
+    #endif // defined(SAFE_RELEASE)
 }
 
 
@@ -54,15 +58,25 @@ void OSCAudioBase::destroyObject(OSCMessage& msg, int addressOffset)
  */
 void OSCAudioBase::createObject(OSCMessage& msg, int addressOffset)
 {
-	char name[50],typ[50];
+	char* name;
+    char* typ;
+    
 	void* pNewObj = NULL;
+    name = (char*) malloc(50);
+    char* nameOrigin = name; // so that free can be used later (as the trim function changes the start address)
+    typ = (char*) malloc(50);
+
 	msg.getString(0,typ,50);
 	msg.getString(1,name,50);
 	
-	Serial.printf("createObject(%s,%s)\n",typ,name);
-	dbgPrt(msg,addressOffset);
-	
-	if (NULL != find(name)) Serial.println("duplicate"); // don't allow duplicate name
+	//Serial.printf("createObject(%s,%s)\n",typ,name);
+	//dbgPrt(msg,addressOffset);
+	name = trim(name);
+    replaceWhiteSpace(name, '_');
+    Serial.printf("createObject(%s,%s)\n",typ,name);
+
+    if (strlen(name) == 0) Serial.println("empty name"); // don't allow any kind of "empty" name
+	else if (NULL != find(name)) Serial.println("duplicate"); // don't allow duplicate name
 #define OSC_CLASS(a,o) else if (0 == strcmp(#a,typ)) pNewObj = new o(name);
 	OSC_AUDIO_CLASSES // massive inefficient macro expansion to create object of required type
 #undef OSC_CLASS
@@ -71,6 +85,10 @@ void OSCAudioBase::createObject(OSCMessage& msg, int addressOffset)
 	{
 		Serial.printf("Created %s as a new %s at %08X\n",name, typ, (uint32_t) pNewObj);
 	}
+    //address:
+    //Serial.printf("Address free(name) in memory: %p\n", &&address);
+    free(nameOrigin);
+    free(typ);
 }
 
 //============================== OSCAudioConnection =====================================================
@@ -79,16 +97,61 @@ void OSCAudioBase::createObject(OSCMessage& msg, int addressOffset)
  */
 void OSCAudioBase::createConnection(OSCMessage& msg, int addressOffset)
 {
-	char buf[50];
+	char* name;
+    name = (char*) malloc(50);
+	char* nameOrigin = name; // so that free can be used later (as the trim function changes the start address)
+
+	//dbgPrt(msg,addressOffset);
+	msg.getString(0,name,50);
+    name = trim(name);
+    replaceWhiteSpace(name, '_');
+    Serial.printf("createConnection(%s)\n",name);
+    if (strlen(name) == 0) Serial.println("empty name"); // don't allow any kind of "empty" name
+    else {
+        OSCAudioConnection* pNewConn = new OSCAudioConnection(name);
+        (void) pNewConn;
+        Serial.printf("Created at: 0x%08X\n",(uint32_t) pNewConn);
+    }
+    free(nameOrigin);
+}
+
+/**
+ *	Rename an [OSC]AudioStream or Connection object.
+ *  This could be an /audio function, but that would pollute the 
+ *	audio functions' name spaces, so we make it a /dynamic
+ *  function instead.
+ */
+void OSCAudioBase::renameObject(OSCMessage& msg, int addressOffset)
+{
+	char oldName[50];
+    char *newName;
+    newName = (char*) malloc(50);
+	char* newNameOrigin = newName; // so that free can be used later (as the trim function changes the start address)
+
+	OSCAudioBase* pVictim;
 	
-	Serial.println("createConnection");
-	dbgPrt(msg,addressOffset);
-	msg.getString(0,buf,50);
-	Serial.println(buf);
-	
-	OSCAudioConnection* pNewConn = new OSCAudioConnection(buf);
-	(void) pNewConn;
-	Serial.printf("Created at: 0x%08X\n",(uint32_t) pNewConn);
+	msg.getString(1,newName,50);
+    
+    newName = trim(newName);
+    replaceWhiteSpace(newName, '_');
+
+    if (strlen(newName) == 0) Serial.println("empty name"); // don't allow any kind of "empty" name
+	else
+    {
+        pVictim = OSCAudioBase::find(newName);
+        if (NULL == pVictim) // we're not duplicating the name of another object: good
+        {
+            msg.getString(0,oldName,50);
+            
+            pVictim = OSCAudioBase::find(oldName);
+            if (NULL != pVictim)
+            {
+                pVictim->setName(newName);
+                Serial.printf("renamed(%s) to (%s)\n",oldName,newName);
+            }
+        }
+    }
+    free(newNameOrigin);
 }
 
 

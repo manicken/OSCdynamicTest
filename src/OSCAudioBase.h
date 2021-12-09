@@ -8,22 +8,88 @@
 class OSCAudioBase
 {
   public:
-    OSCAudioBase(const char* _name,AudioStream* _sibling = NULL) : sibling(_sibling)
+    OSCAudioBase(const char* _name,AudioStream* _sibling = NULL) : name(NULL), sibling(_sibling)
     {
-      if (NULL != _name)
-      {
-        nameLen = strlen(_name);
+      setName(_name);
+      linkIn(); 
+    }
+
+    /*void setName(const char* newName)
+    {
+        if (NULL == newName) return;
         
-        Serial.printf("Created %s\n\n",_name);
-        
+        Serial.printf("Renamed %s to %s\n\n",name,newName);
+        free(name);
+        nameLen = strlen(newName);
         name = (char*) malloc(nameLen+3); // include space for // and null terminator
         if (NULL != name)
         {
           name[0] = '/'; // for routing
-          strcpy(name+1,_name);
+          strcpy(name+1,newName);
         }
+    }*/
+
+    /**
+	 * (Re)set the name of the OSCAudio object so the system can find it.
+	 * We don't allow a NULL name, as everything should have a name.
+	 * If there's already enough space for a new name then we don't 
+	 * re-allocate less, which may help heap fragmentation in some small way.
+	 */
+	void setName(const char* _name)
+	{		
+#define NAME_PAD 3	
+	  void* toFree = name;
+	  if (NULL != _name)
+      {
+        nameLen = strlen(_name);
+                
+		if (nameAlloc < nameLen+NAME_PAD || NULL == name)
+		{
+			nameAlloc = nameLen+NAME_PAD;
+			name = (char*) malloc(nameAlloc); // include space for // and null terminator
+		}
+		else
+			toFree = NULL;
+		
+        if (NULL != name)
+        {
+          name[0] = '/'; // for routing
+          strcpy(name+1,_name);
+		  //Serial.printf("Created %s at 0x%08X\n",name,(uint32_t) name);
+        }
+		
+		if (NULL != toFree)
+		{
+			//Serial.printf("now free 0x%08X...\n",(uint32_t) toFree);
+			//Serial.flush();
+			free(toFree);
+		}		
       }
-      linkIn(); 
+	}
+    static char *ltrim(char *s)
+    {
+        while(isspace(*s)) s++;
+        return s;
+    }
+
+    static char *rtrim(char *s)
+    {
+        char* back = s + strlen(s);
+        while(isspace(*--back));
+        *(back+1) = '\0';
+        return s;
+    }
+
+    static char *trim(char *s)
+    {
+        return rtrim(ltrim(s)); 
+    }
+    static void replaceWhiteSpace(char *s, char replace)
+    {
+        while (*s) {
+            if (isspace(*s)) *s = replace;
+            s++;
+        }
     }
 	
     
@@ -145,8 +211,10 @@ class OSCAudioBase
 	{
 		return next_route;
 	}
-	
+
   private:
+    static void renameObject(OSCMessage& msg, int addressOffset);
+	size_t nameAlloc;	//!< space allocated for name: may be shorter than current name
 	// existing objects: message passing and linking in/out
     static OSCAudioBase* first_route; //!< linked list to route OSC messages to all derived instances
     OSCAudioBase* next_route;

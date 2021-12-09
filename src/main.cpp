@@ -8,6 +8,7 @@
 #include <OSCMessage.h>
 #include <OSCBundle.h>
 #include <SLIPEncodedSerial.h>
+#include <CrashReport.h>
 
 
 #include <Audio.h>
@@ -23,7 +24,7 @@
 OSCAudioSynthWaveform    waveform1("waveform1");
 OSCAudioMixer4           mixer1("mixer1");
 AudioOutputUSB           usb;           //xy=977,476
-OSCAudioOutputPT8211_2   pt8211("pt82");
+OSCAudioOutputPT8211_2   pt8211("pt8211");
 AudioConnection          patchCord1(waveform1, 0, usb, 0);
 AudioConnection          patchCord2(waveform1, 0, mixer1, 0);
 AudioConnection          patchCord3(mixer1, 0, pt8211, 0);
@@ -47,12 +48,12 @@ void setup() {
 	Serial.begin(115200);
   while(!Serial)
     ;
-
-  /*if (CrashReport)
+Serial.println("OSC dynamic test started!");
+  if (CrashReport)
   {
     Serial.println(CrashReport);
     CrashReport.clear();
-  }*/
+  }
 	HWSERIAL.begin(115200);
   HWSERIAL.setTimeout(100);
 
