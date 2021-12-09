@@ -97,7 +97,8 @@ void listObjects(void)
 // work with SLIP-protocol serial port:
 void loop()
 {
-  OSCBundle  msg;
+  OSCBundle  bundle;
+  OSCMessage *msg;
   int msgLen;
   int msgCount;
   char prt[200];
@@ -109,29 +110,23 @@ void loop()
     while (msgLen--)
     {
       char c = HWSERIAL.read();
-      msg.fill((uint8_t) c);
+      bundle.fill((uint8_t) c);
     }
   }
   Serial.println();
 
-  if (!msg.hasError())
+  if (!bundle.hasError())
   {
-    msgCount = msg.size();
+    msgCount = bundle.size();
     for (int i = 0; i < msgCount; i++) {
-      msg.getOSCMessage(i)->getAddress(prt);
+      msg = bundle.getOSCMessage(i);
+      msg->getAddress(prt);
       Serial.println(prt);
       Serial.flush();
-      msg.getOSCMessage(i)->route("/teensy*/audio*",routeAudio); // see if this object can use the message
-      msg.getOSCMessage(i)->route("/teensy*/dynamic*",routeDynamic); // see if this object can use the message
-      //msg.getAddress(prt);
+      msg->route("/teensy*/audio*",routeAudio); // see if this object can use the message
+      msg->route("/teensy*/dynamic*",routeDynamic); // see if this object can use the message
       
     }
-    
-    
-    
-    
-    //msg.route("/teensy*/audio*",routeAudio); // see if this object can use the message
-    //msg.route("/teensy*/dynamic*",routeDynamic); // see if this object can use the message
     Serial.println("---------------------");
     listObjects();
     Serial.println("=====================");
