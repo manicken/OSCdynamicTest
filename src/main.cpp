@@ -90,6 +90,8 @@ void listObjects(void)
   while (NULL != obj)
   {
     Serial.println(obj->name);
+    HWSERIAL.println(obj->name); // for now use this simple print
+    
     obj = obj->getNext();
   }
 }
@@ -129,7 +131,32 @@ void loop()
       
     }
     Serial.println("---------------------");
+    HWSERIAL.println("---------------------");
     listObjects();
     Serial.println("=====================");
+    HWSERIAL.println("=====================");
+  }else {
+      OSCErrorCode error = bundle.getError();
+      HWSERIAL.print("bundle error"); 
+      OSCMessage errorMsg("/error/bundle");
+      
+      if (error == OSCErrorCode::BUFFER_FULL)
+        //errorMsg.add("BUFFER_FULL");
+        HWSERIAL.println("BUFFER_FULL");
+      else if (error == OSCErrorCode::INVALID_OSC)
+        //errorMsg.add("INVALID_OSC");
+        HWSERIAL.println("INVALID_OSC");
+      else if (error == OSCErrorCode::ALLOCFAILED)
+        //errorMsg.add("ALLOCFAILED");
+        HWSERIAL.println("ALLOCFAILED");
+      else if (error == OSCErrorCode::INDEX_OUT_OF_BOUNDS)
+        //errorMsg.add("INDEX_OUT_OF_BOUNDS");
+        HWSERIAL.println("INDEX_OUT_OF_BOUNDS");
+    //errorMsg.add("some more data");
+    //HWSERIAL.beginPacket();
+      //errorMsg.send(HWSERIAL);
+      //HWSERIAL.endPacket();
+      //HWSERIAL.println("bundle error");
   }
+  //bundle.empty();
 }
